@@ -5,6 +5,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -12,19 +14,26 @@ import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-class NotesCustomAdapter extends RecyclerView.Adapter<NotesCustomAdapter.MyViewHolder>{
+class NotesCustomAdapter extends RecyclerView.Adapter<NotesCustomAdapter.MyViewHolder> implements Filterable {
 
     private Context context;
 
     int position;
 
+    //when we filter our search this movie list will get filtered and will not contain all the movies that were present earlier in this list
+    //hence we require a new list type variable and take a backup of the list before we do any sort of filtering
     List<String> movies ;
+   // this will contain the list of all the movies without being filtered
+    List<String> moviesListWithoutFilter;
 
     public NotesCustomAdapter(List<String> movies)
     {
         this.movies = movies;
+        this.moviesListWithoutFilter = new ArrayList<>(movies);
     }
 
     @NonNull
@@ -60,6 +69,49 @@ class NotesCustomAdapter extends RecyclerView.Adapter<NotesCustomAdapter.MyViewH
     public int getItemCount() {
         return movies.size();
     }
+
+    @Override
+    public Filter getFilter() {
+        return filter;
+    }
+
+    Filter filter = new Filter() {
+        //performFiltering is run on a background thread
+        @Override
+        protected FilterResults performFiltering(CharSequence constraint) {
+            //logic of filtering search results
+            List<String> filtered_List_of_movies =  new ArrayList<>();
+            if(constraint.toString().isEmpty())
+            {
+                //if the constraint is empty then all the movies must be shown
+                filtered_List_of_movies.addAll(moviesListWithoutFilter);
+            }
+            else
+            {
+                for(String movie: moviesListWithoutFilter)
+                {
+                    if(movie.toLowerCase().contains(constraint.toString().toLowerCase()))
+                    {
+                        filtered_List_of_movies.add(movie);
+                    }
+                }
+            }
+            //create a variable of type filtered results
+            FilterResults filterResults = new FilterResults();
+            filterResults.values = filtered_List_of_movies;
+            //return filterResults; will return the value of this to the publishResults method down below
+            return filterResults;
+        }
+       //it runs on a ui thread
+        @Override
+        protected void publishResults(CharSequence constraint, FilterResults results) {
+            //here we need to update the ui
+            movies.clear();
+            movies.addAll((Collection<? extends String>) results.values);
+            //now notify the recycler view that the data set has been changed
+            notifyDataSetChanged();
+        }
+    };
 
     public class MyViewHolder extends RecyclerView.ViewHolder{
         TextView note_title_note_card_view_layout; //holds the title of a note
